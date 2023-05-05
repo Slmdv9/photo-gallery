@@ -9,6 +9,7 @@ import { Preferences } from '@capacitor/preferences';
 export class PhotoService {
 
   public photos: UserPhoto[] = [];
+  private PHOTO_STORAGE: string = 'photos';
 
   constructor() { }
 
@@ -23,6 +24,29 @@ export class PhotoService {
     // Save the picture and add it to photo collection
     const savedImageFile = await this.savePicture(capturedPhoto);
     this.photos.unshift(savedImageFile);
+
+    Preferences.set({
+      key: this.PHOTO_STORAGE,
+      value: JSON.stringify(this.photos)
+    });
+  }
+
+  public async loadSaved() {
+    // Retrieve cached photo array data
+    const { value } = await Preferences.get({ key: this.PHOTO_STORAGE });
+    this.photos = ( value ? JSON.parse(value) : []) as UserPhoto[];
+
+    // Display the photo by reading into base64 format
+    for (let photo of this.photos) {
+      // Read each saved photo's data from Filesystem
+      const readFile = await Filesystem.readFile({
+        path: photo.filepath,
+        directory: Directory.Data
+      });
+
+      // Web platform only: read the photo as base64 data
+      photo.webviewPath = `data:image/jpeg;base64,${readFile.data}`;
+    }
   }
 
   private async savePicture(photo: Photo) {
